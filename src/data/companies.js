@@ -1,0 +1,68 @@
+
+const companies = [
+  {
+    id: 1,
+    name: "Google",
+    industry: "Technology & Software",
+    location: "Bangalore",
+    description: "A global technology company working on software, cloud, search and artificial intelligence.",
+    logo: "/images/google.png",
+    listingCount: 15,
+  },
+  {
+    id: 2,
+    name: "Microsoft",
+    industry: "Technology & Cloud Computing",
+    location: "Hyderabad",
+    description: "A technology company developing software, cloud platforms and enterprise solutions.",
+    logo: "/images/microsoft.png",
+    listingCount: 15,
+  },
+  {
+    id: 3,
+    name: "Amazon",
+    industry: "E-commerce & Technology",
+    location: "Bangalore",
+    description: "A global company working in e-commerce, cloud computing and digital services.",
+    logo: "/images/amazon.png",
+    listingCount: 15,
+  },
+  {
+    id: 4,
+    name: "Infosys",
+    industry: "IT Services & Consulting",
+    location: "Pune",
+    description: "An IT services company providing digital transformation and technology consulting.",
+    logo: "/images/infosys.png",
+    listingCount: 15,
+  },
+  {
+    id: 5,
+    name: "TCS",
+    industry: "IT Services & Consulting",
+    location: "Chennai",
+    description: "A global IT services company offering consulting, technology and business solutions.",
+    logo: "/images/tcs.png",
+    listingCount: 15,
+  },
+  {
+    id: 6,
+    name: "Accenture",
+    industry: "IT Services & Consulting",
+    location: "Bangalore",
+    description: "A professional services company specializing in technology, consulting and digital solutions.",
+    logo: "/images/accenture.png",
+    listingCount: 15,
+  },
+  {
+    id: 7,
+    name: "IBM",
+    industry: "Technology & Artificial Intelligence",
+    location: "Bangalore",
+    description: "A technology company focused on enterprise software, AI, cloud and infrastructure.",
+    logo: "/images/ibm.png",
+    listingCount: 15,
+  },
+];
+
+export default companies;

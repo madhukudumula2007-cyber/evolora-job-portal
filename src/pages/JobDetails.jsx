@@ -3,6 +3,8 @@ import React, { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { jobs } from "../data/jobsData";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 function JobDetails() {
   const { id } = useParams();
 
@@ -11,7 +13,6 @@ function JobDetails() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Get the selected job from the same dataset used by Jobs.jsx
   const job = jobs.find(
     (item) => String(item.id) === String(id)
   );
@@ -49,9 +50,9 @@ function JobDetails() {
     };
 
     try {
-      // STEP 1: Save application details in JSON Server
+      // STEP 1: Save application in the database
       const response = await fetch(
-        "http://localhost:3000/applications",
+        `${API_URL}/api/applications`,
         {
           method: "POST",
           headers: {
@@ -65,22 +66,17 @@ function JobDetails() {
         throw new Error("Application could not be saved.");
       }
 
-      // STEP 2: Add applicant and job details to FormData
-      // The actual resume file is already included.
+      // STEP 2: Add application details to FormData
       formData.append("applicantName", application.applicantName);
       formData.append("applicantEmail", application.email);
       formData.append("phone", application.phone);
       formData.append("jobTitle", application.jobTitle);
       formData.append("company", application.company);
+      formData.append("appliedAt", application.appliedAt);
 
-      formData.append(
-        "appliedAt",
-        new Date(application.appliedAt).toLocaleString()
-      );
-
-      // STEP 3: Send details and resume together in one email
+      // STEP 3: Send resume and details by email
       const emailResponse = await fetch(
-        "http://localhost:5000/send-email",
+        `${API_URL}/send-email`,
         {
           method: "POST",
           body: formData
@@ -95,7 +91,7 @@ function JobDetails() {
         );
       }
 
-      // STEP 4: Show success after email is sent
+      // STEP 4: Show success
       setSubmitted(true);
       setShowForm(false);
       form.reset();
@@ -113,7 +109,6 @@ function JobDetails() {
     }
   };
 
-  // Handle invalid job IDs
   if (!job) {
     return (
       <div className="jobs-page">
@@ -128,7 +123,6 @@ function JobDetails() {
 
   return (
     <div className="jobs-page">
-
       <div className="job-details">
 
         <Link to="/jobs" className="job-view">

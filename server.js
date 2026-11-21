@@ -1,7 +1,6 @@
 
 import express from "express";
 import multer from "multer";
-import nodemailer from "nodemailer";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
@@ -48,16 +47,7 @@ const upload = multer({
   }
 });
 
-// Gmail configuration
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
-
-// Send application email with resume attachment
+// Send application email using Brevo API
 app.post("/send-email", upload.single("resume"), async (req, res) => {
   try {
     if (!req.file) {
@@ -69,28 +59,51 @@ app.post("/send-email", upload.single("resume"), async (req, res) => {
     const {
       applicantName,
       applicantEmail,
-      phone,
       jobTitle,
       company,
       appliedAt
     } = req.body;
 
+    // Handle duplicate phone values sent by FormData
+    const phoneValue = req.body.phone;
+    const phone = Array.isArray(phoneValue)
+      ? phoneValue[0]
+      : phoneValue;
+
+    // Check required environment variables
     if (
+      !process.env.BREVO_API_KEY ||
       !process.env.EMAIL_USER ||
-      !process.env.EMAIL_PASS ||
       !process.env.RECEIVE_EMAIL
     ) {
       return res.status(500).json({
-        message: "Email configuration is missing."
+        message: "Brevo email configuration is missing."
       });
     }
 
-    await transporter.sendMail({
-      from: `"Evolora Job Portal" <${process.env.EMAIL_USER}>`,
-      to: process.env.RECEIVE_EMAIL,
+    // Prepare resume attachment in Base64 format
+    const resumeBase64 = req.file.buffer.toString("base64");
+
+    const emailData = {
+      sender: {
+        name: "Evolora Job Portal",
+        email: process.env.EMAIL_USER
+      },
+
+      to: [
+        {
+          email: process.env.RECEIVE_EMAIL
+        }
+      ],
+
+      replyTo: {
+        email: applicantEmail,
+        name: applicantName
+      },
+
       subject: `New Job Application - ${jobTitle}`,
 
-      text: `
+      textContent: `
 A new job application has been submitted on Evolora.
 
 APPLICANT DETAILS:
@@ -106,24 +119,54 @@ Company: ${company}
 Applied At: ${appliedAt}
       `,
 
-      attachments: [
+      attachment: [
         {
-          filename: path.basename(req.file.originalname),
-          content: req.file.buffer,
-          contentType: req.file.mimetype
+          name: path.basename(req.file.originalname),
+          content: resumeBase64
         }
       ]
-    });
+    };
+
+    // Send email through Brevo HTTP API
+    const brevoResponse = await fetch(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        method: "POST",
+
+        headers: {
+          "accept": "application/json",
+          "api-key": process.env.BREVO_API_KEY,
+          "content-type": "application/json"
+        },
+
+        body: JSON.stringify(emailData)
+      }
+    );
+
+    const responseData = await brevoResponse.json();
+
+    if (!brevoResponse.ok) {
+      console.error("Brevo API error:", responseData);
+
+      return res.status(500).json({
+        message:
+          responseData.message ||
+          "Brevo could not send the application email."
+      });
+    }
+
+    console.log("Application email sent successfully through Brevo.");
 
     return res.json({
-      message: "Email and resume sent successfully!"
+      message: "Application email and resume sent successfully!",
+      messageId: responseData.messageId
     });
 
   } catch (error) {
-    console.error("Email error:", error);
+    console.error("Email sending error:", error);
 
     return res.status(500).json({
-      message: "Email sending failed."
+      message: "Email sending failed. Please try again."
     });
   }
 });

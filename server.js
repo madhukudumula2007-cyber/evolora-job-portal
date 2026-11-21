@@ -15,6 +15,13 @@ const PORT = process.env.PORT || 5000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Check environment variables safely
+console.log("========== EVOLORA CONFIGURATION ==========");
+console.log("Brevo API key exists:", !!process.env.BREVO_API_KEY?.trim());
+console.log("Sender email exists:", !!process.env.EMAIL_USER?.trim());
+console.log("Receiver email exists:", !!process.env.RECEIVE_EMAIL?.trim());
+console.log("===========================================");
+
 // Middleware
 app.use(cors());
 app.use(jsonServer.bodyParser);
@@ -29,9 +36,11 @@ app.use("/api", router);
 // Resume upload configuration
 const upload = multer({
   storage: multer.memoryStorage(),
+
   limits: {
     fileSize: 5 * 1024 * 1024
   },
+
   fileFilter: (req, file, cb) => {
     const allowed = [
       "application/pdf",
@@ -50,6 +59,7 @@ const upload = multer({
 // Send application email using Brevo API
 app.post("/send-email", upload.single("resume"), async (req, res) => {
   try {
+
     if (!req.file) {
       return res.status(400).json({
         message: "Resume is required."
@@ -64,35 +74,58 @@ app.post("/send-email", upload.single("resume"), async (req, res) => {
       appliedAt
     } = req.body;
 
-    // Handle duplicate phone values sent by FormData
+    // Handle duplicate phone values sent through FormData
     const phoneValue = req.body.phone;
+
     const phone = Array.isArray(phoneValue)
       ? phoneValue[0]
       : phoneValue;
 
-    // Check required environment variables
-    if (
-      !process.env.BREVO_API_KEY ||
-      !process.env.EMAIL_USER ||
-      !process.env.RECEIVE_EMAIL
-    ) {
+    // Read environment variables
+    const brevoApiKey = process.env.BREVO_API_KEY?.trim();
+    const senderEmail = process.env.EMAIL_USER?.trim();
+    const receiverEmail = process.env.RECEIVE_EMAIL?.trim();
+
+    // Identify missing configuration
+    const missingVariables = [];
+
+    if (!brevoApiKey) {
+      missingVariables.push("BREVO_API_KEY");
+    }
+
+    if (!senderEmail) {
+      missingVariables.push("EMAIL_USER");
+    }
+
+    if (!receiverEmail) {
+      missingVariables.push("RECEIVE_EMAIL");
+    }
+
+    if (missingVariables.length > 0) {
+      console.error(
+        "Missing email configuration:",
+        missingVariables.join(", ")
+      );
+
       return res.status(500).json({
-        message: "Brevo email configuration is missing."
+        message: "Brevo email configuration is missing.",
+        missingVariables
       });
     }
 
     // Prepare resume attachment in Base64 format
     const resumeBase64 = req.file.buffer.toString("base64");
 
+    // Prepare email
     const emailData = {
       sender: {
         name: "Evolora Job Portal",
-        email: process.env.EMAIL_USER
+        email: senderEmail
       },
 
       to: [
         {
-          email: process.env.RECEIVE_EMAIL
+          email: receiverEmail
         }
       ],
 
@@ -127,7 +160,7 @@ Applied At: ${appliedAt}
       ]
     };
 
-    // Send email through Brevo HTTP API
+    // Send email using Brevo HTTP API
     const brevoResponse = await fetch(
       "https://api.brevo.com/v3/smtp/email",
       {
@@ -135,7 +168,7 @@ Applied At: ${appliedAt}
 
         headers: {
           "accept": "application/json",
-          "api-key": process.env.BREVO_API_KEY,
+          "api-key": brevoApiKey,
           "content-type": "application/json"
         },
 
@@ -145,6 +178,7 @@ Applied At: ${appliedAt}
 
     const responseData = await brevoResponse.json();
 
+    // Handle Brevo errors
     if (!brevoResponse.ok) {
       console.error("Brevo API error:", responseData);
 
@@ -155,14 +189,17 @@ Applied At: ${appliedAt}
       });
     }
 
-    console.log("Application email sent successfully through Brevo.");
+    console.log(
+      "Application email sent successfully through Brevo."
+    );
 
-    return res.json({
+    return res.status(200).json({
       message: "Application email and resume sent successfully!",
       messageId: responseData.messageId
     });
 
   } catch (error) {
+
     console.error("Email sending error:", error);
 
     return res.status(500).json({
@@ -178,6 +215,7 @@ app.get("/", (req, res) => {
 
 // Error handling
 app.use((error, req, res, next) => {
+
   console.error("Server error:", error.message);
 
   res.status(400).json({
